@@ -20,7 +20,7 @@ document.querySelector('#form').addEventListener('submit',async e=>{
 // 追加：空入力の送信を防止
     if (message.trim() === '') {
         document.querySelector('#status').textContent =
-            '投稿内容を入力してください';
+            '空白のみの投稿を防止しました';
         return;
     }
 
