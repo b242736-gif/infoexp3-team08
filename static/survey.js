@@ -16,19 +16,19 @@ async function loadSurveys() {
             ${x.img_question ? `<img src="${escapeHtml(x.img_question)}" style="max-width: 200px; display: block; margin-bottom: 10px;">` : ''}
             <ul>
                 <li>
-                    <button onclick="vote(${x.id}, 1)" ${localStorage.getItem(`survey_${x.id}_option_1`) ? 'disabled' : ''}>${escapeHtml(x.option1)}</button> : ${x.votes1}票
+                    <button onclick="vote(${x.uuid}, 1)" ${localStorage.getItem(`survey_${x.id}_option_1`) ? 'disabled' : ''}>${escapeHtml(x.option1)}</button> : ${x.votes1}票
                     ${x.img1 ? `<br><img src="${escapeHtml(x.img1)}" style="max-width: 100px; margin-top: 5px;">` : ''}
                 </li>
                 <li>
-                    <button onclick="vote(${x.id}, 2)" ${localStorage.getItem(`survey_${x.id}_option_2`) ? 'disabled' : ''}>${escapeHtml(x.option2)}</button> : ${x.votes2}票
+                    <button onclick="vote(${x.uuid}, 2)" ${localStorage.getItem(`survey_${x.id}_option_2`) ? 'disabled' : ''}>${escapeHtml(x.option2)}</button> : ${x.votes2}票
                     ${x.img2 ? `<br><img src="${escapeHtml(x.img2)}" style="max-width: 100px; margin-top: 5px;">` : ''}
                 </li>
                 ${x.option3 ? `<li>
-                    <button onclick="vote(${x.id}, 3)" ${localStorage.getItem(`survey_${x.id}_option_3`) ? 'disabled' : ''}>${escapeHtml(x.option3)}</button> :${x.votes3}票
+                    <button onclick="vote(${x.uuid}, 3)" ${localStorage.getItem(`survey_${x.id}_option_3`) ? 'disabled' : ''}>${escapeHtml(x.option3)}</button> :${x.votes3}票
                     ${x.img3 ? `<br><img src="${escapeHtml(x.img3)}" style="max-width: 100px; margin-top: 5px;">` : ''}
                 </li>` : ''}
                 ${x.option4 ? `<li>
-                    <button onclick="vote(${x.id}, 4)" ${localStorage.getItem(`survey_${x.id}_option_4`) ? 'disabled' : ''}>${escapeHtml(x.option4)}</button> :${x.votes4}票
+                    <button onclick="vote(${x.uuid}, 4)" ${localStorage.getItem(`survey_${x.id}_option_4`) ? 'disabled' : ''}>${escapeHtml(x.option4)}</button> :${x.votes4}票
                     ${x.img4 ? `<br><img src="${escapeHtml(x.img4)}" style="max-width: 100px; margin-top: 5px;">` : ''}
                 </li>` : ''}
             </ul>
