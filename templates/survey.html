@@ -13,11 +13,22 @@
         
         <form id="survey-form">
             <input id="survey-name" placeholder="お名前" maxlength="30">
+            
             <input id="survey-question" placeholder="質問内容" required maxlength="100">
+            <input type="file" id="survey-img-question" accept="image/*">
+            
             <input id="survey-opt1" placeholder="選択肢 1" required maxlength="50">
+            <input type="file" id="survey-img1" accept="image/*">
+            
             <input id="survey-opt2" placeholder="選択肢 2" required maxlength="50">
+            <input type="file" id="survey-img2" accept="image/*">
+            
             <input id="survey-opt3" placeholder="選択肢 3" maxlength="50">
+            <input type="file" id="survey-img3" accept="image/*">
+            
             <input id="survey-opt4" placeholder="選択肢 4" maxlength="50">
+            <input type="file" id="survey-img4" accept="image/*">
+            
             <button type="submit">アンケートを作る</button>
         </form>
         <p id="survey-status"></p>
