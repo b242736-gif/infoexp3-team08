@@ -1,6 +1,13 @@
+const surveyUuids = new Map();
 async function loadSurveys() {
     const r = await fetch('/api/surveys');
     const xs = await r.json();
+
+    surveyUuids.clear();
+    xs.forEach(x => {
+        surveyUuids.set(x.id, x.uuid);
+    });
+
     
     document.querySelector('#surveys-list').innerHTML = xs.map(x => `
         <article style="border: 1px solid #ccc; padding: 10px; margin-bottom: 10px; border-radius: 5px;">
@@ -39,7 +46,14 @@ function escapeHtml(s) {
 // 投票処理
 // 投票処理
 async function vote(surveyId, optionNumber) {
-    const voteKey = `survey_${surveyId}_option_${optionNumber}`;
+    const surveyUuid = surveyUuids.get(surveyId);
+
+if (!surveyUuid) {
+    alert('アンケート情報を取得できませんでした');
+    return;
+}
+
+const voteKey = `survey_${surveyUuid}_option_${optionNumber}`;
 
     // すでに投票しているか確認
     if (localStorage.getItem(voteKey)) {

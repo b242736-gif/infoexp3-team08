@@ -30,6 +30,7 @@ def init_db():
         con.execute("""
             CREATE TABLE IF NOT EXISTS surveys (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
+                uuid TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 name TEXT,
                 question TEXT,
@@ -47,6 +48,7 @@ def init_db():
         # 足りないカラムの自動追加（画像用カラムを追加）
         existing_columns = [row[1] for row in con.execute("PRAGMA table_info(surveys)").fetchall()]
         for col_name, col_type in [
+            ("uuid", "TEXT"),
             ("name", "TEXT"), ("question", "TEXT"),
             ("option1", "TEXT"), ("option2", "TEXT"), ("option3", "TEXT"), ("option4", "TEXT"),
             ("votes1", "INTEGER DEFAULT 0"), ("votes2", "INTEGER DEFAULT 0"),
@@ -56,6 +58,23 @@ def init_db():
         ]:
             if col_name not in existing_columns:
                 con.execute(f"ALTER TABLE surveys ADD COLUMN {col_name} {col_type}")
+
+        # 既存のアンケートにUUIDを割り当てる
+        rows = con.execute(
+            "SELECT id FROM surveys WHERE uuid IS NULL OR uuid = ''"
+        ).fetchall()
+
+        for row in rows:
+            con.execute(
+                "UPDATE surveys SET uuid = ? WHERE id = ?",
+                (uuid.uuid4().hex, row["id"])
+            )
+
+        # UUIDの重複を防ぐ
+        con.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_surveys_uuid ON surveys(uuid)"
+        )
+
 
 @app.get("/")
 def index():
@@ -117,13 +136,17 @@ def handle_surveys():
         img3 = save_image(request.files.get("img3"))
         img4 = save_image(request.files.get("img4"))
 
+        # アンケートごとに固有のUUIDを生成
+        survey_uuid = uuid.uuid4().hex
+
         with connect() as con:
             con.execute(
-                """INSERT INTO surveys 
-                   (name, question, option1, option2, option3, option4, 
-                    votes1, votes2, votes3, votes4, img_question, img1, img2, img3, img4) 
-                   VALUES (?, ?, ?, ?, ?, ?, 0, 0, 0, 0, ?, ?, ?, ?, ?)""",
-                (name, question, option1, option2, option3, option4, 
+                """INSERT INTO surveys
+                   (uuid, name, question, option1, option2, option3, option4,
+                    votes1, votes2, votes3, votes4,
+                    img_question, img1, img2, img3, img4)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, 0, 0, 0, 0, ?, ?, ?, ?, ?)""",
+                (survey_uuid, name, question, option1, option2, option3, option4,
                  img_question, img1, img2, img3, img4)
             )
         return jsonify({"ok": True}), 201
