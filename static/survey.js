@@ -3,30 +3,70 @@ async function loadSurveys() {
     const xs = await r.json();
     
     document.querySelector('#surveys-list').innerHTML = xs.map(x => `
-        <article style="border: 1px solid #ccc; padding: 10px; margin-bottom: 10px; border-radius: 5px;">
+        <article style="border: 1px solid #ccc; padding: 10px; margin-bottom: 20px; border-radius: 5px;">
             <p><b>${escapeHtml(x.name || '名無し')} さんの質問:</b></p>
             <h3>${escapeHtml(x.question)}</h3>
             ${x.img_question ? `<img src="${escapeHtml(x.img_question)}" style="max-width: 200px; display: block; margin-bottom: 10px;">` : ''}
             <ul>
                 <li>
-                    <button onclick="vote(${x.id}, 1)">${escapeHtml(x.option1)}</button> : ${x.votes1}票
+                    <button onclick="vote(${x.id}, 1)" ${localStorage.getItem(`survey_${x.id}_option_1`) ? 'disabled' : ''}>${escapeHtml(x.option1)}</button> : ${x.votes1}票
                     ${x.img1 ? `<br><img src="${escapeHtml(x.img1)}" style="max-width: 100px; margin-top: 5px;">` : ''}
                 </li>
                 <li>
-                    <button onclick="vote(${x.id}, 2)">${escapeHtml(x.option2)}</button> : ${x.votes2}票
+                    <button onclick="vote(${x.id}, 2)" ${localStorage.getItem(`survey_${x.id}_option_2`) ? 'disabled' : ''}>${escapeHtml(x.option2)}</button> : ${x.votes2}票
                     ${x.img2 ? `<br><img src="${escapeHtml(x.img2)}" style="max-width: 100px; margin-top: 5px;">` : ''}
                 </li>
                 ${x.option3 ? `<li>
-                    <button onclick="vote(${x.id}, 3)">${escapeHtml(x.option3)}</button> :${x.votes3}票
+                    <button onclick="vote(${x.id}, 3)" ${localStorage.getItem(`survey_${x.id}_option_3`) ? 'disabled' : ''}>${escapeHtml(x.option3)}</button> :${x.votes3}票
                     ${x.img3 ? `<br><img src="${escapeHtml(x.img3)}" style="max-width: 100px; margin-top: 5px;">` : ''}
                 </li>` : ''}
                 ${x.option4 ? `<li>
-                    <button onclick="vote(${x.id}, 4)">${escapeHtml(x.option4)}</button> :${x.votes4}票
+                    <button onclick="vote(${x.id}, 4)" ${localStorage.getItem(`survey_${x.id}_option_4`) ? 'disabled' : ''}>${escapeHtml(x.option4)}</button> :${x.votes4}票
                     ${x.img4 ? `<br><img src="${escapeHtml(x.img4)}" style="max-width: 100px; margin-top: 5px;">` : ''}
                 </li>` : ''}
             </ul>
+            <div style="width: 100%; max-width: 400px; margin-top: 15px;">
+                <canvas id="chart-${x.id}"></canvas>
+            </div>
         </article>
     `).join('');
+
+    // 各アンケートのグラフを描画
+    xs.forEach(x => {
+        const ctx = document.getElementById(`chart-${x.id}`);
+        if (!ctx) return;
+
+        const labels = [x.option1, x.option2];
+        const data = [x.votes1, x.votes2];
+        if (x.option3) { labels.push(x.option3); data.push(x.votes3); }
+        if (x.option4) { labels.push(x.option4); data.push(x.votes4); }
+
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: '得票数',
+                    data: data,
+                    backgroundColor: [
+                        'rgba(255, 99, 132, 0.6)',
+                        'rgba(54, 162, 235, 0.6)',
+                        'rgba(255, 206, 86, 0.6)',
+                        'rgba(75, 192, 192, 0.6)'
+                    ],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: { stepSize: 1 }
+                    }
+                }
+            }
+        });
+    });
 }
 
 function escapeHtml(s) {
