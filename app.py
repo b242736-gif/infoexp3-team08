@@ -1,3 +1,5 @@
+import os
+import uuid
 from flask import Flask, jsonify, render_template, request
 from pathlib import Path
 import sqlite3
@@ -5,6 +7,10 @@ from datetime import datetime, timezone
 
 app = Flask(__name__)
 DB = Path("data/miniboard.db")
+
+# 画像の保存先フォルダを設定
+UPLOAD_FOLDER = Path("static/uploads")
+UPLOAD_FOLDER.mkdir(parents=True, exist_ok=True)
 
 def connect():
     DB.parent.mkdir(exist_ok=True)
@@ -21,7 +27,6 @@ def init_db():
             created_at TEXT NOT NULL
         )""")
 
-        # ▼ 【追加】アンケート結果を保存するテーブルを作成する処理
         con.execute("""
             CREATE TABLE IF NOT EXISTS surveys (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -39,20 +44,15 @@ def init_db():
             )
         """)
 
-        # 2. 足りないカラム（列）があれば自動で追加する安全な処理
+        # 足りないカラムの自動追加（画像用カラムを追加）
         existing_columns = [row[1] for row in con.execute("PRAGMA table_info(surveys)").fetchall()]
-        
         for col_name, col_type in [
-            ("name", "TEXT"),
-            ("question", "TEXT"),
-            ("option1", "TEXT"),
-            ("option2", "TEXT"),
-            ("option3", "TEXT"),
-            ("option4", "TEXT"),
-            ("votes1", "INTEGER DEFAULT 0"),
-            ("votes2", "INTEGER DEFAULT 0"),
-            ("votes3", "INTEGER DEFAULT 0"),
-            ("votes4", "INTEGER DEFAULT 0")
+            ("name", "TEXT"), ("question", "TEXT"),
+            ("option1", "TEXT"), ("option2", "TEXT"), ("option3", "TEXT"), ("option4", "TEXT"),
+            ("votes1", "INTEGER DEFAULT 0"), ("votes2", "INTEGER DEFAULT 0"),
+            ("votes3", "INTEGER DEFAULT 0"), ("votes4", "INTEGER DEFAULT 0"),
+            ("img_question", "TEXT"), ("img1", "TEXT"), ("img2", "TEXT"), 
+            ("img3", "TEXT"), ("img4", "TEXT")
         ]:
             if col_name not in existing_columns:
                 con.execute(f"ALTER TABLE surveys ADD COLUMN {col_name} {col_type}")
@@ -80,51 +80,51 @@ def create_message():
         row = con.execute("SELECT * FROM messages WHERE id=?", (cur.lastrowid,)).fetchone()
     return jsonify(dict(row)), 201
 
-@app.put("/api/messages/<int:message_id>")
-def update_message(message_id):
-    data = request.get_json(silent=True) or {}
-    message = str(data.get("message", "")).strip()[:300]
-    if not message:
-        return jsonify({"error": "message is required"}), 400
-    with connect() as con:
-        cur = con.execute("UPDATE messages SET message=? WHERE id=?", (message,message_id))
-        if cur.rowcount == 0:
-            return jsonify({"error": "not found"}), 404
-    return jsonify({"ok": True})
-
-@app.delete("/api/messages/<int:message_id>")
-def delete_message(message_id):
-    with connect() as con:
-        cur = con.execute("DELETE FROM messages WHERE id=?", (message_id,))
-        if cur.rowcount == 0:
-            return jsonify({"error": "not found"}), 404
-    return "", 204
-
-# ① ブラウザで /survey にアクセスしたときに survey.html を表示する
 @app.route("/survey")
 def survey_page():
     return render_template("survey.html")
 
-# ② 4択のアンケートの取得（GET）と作成（POST）を行うAPI
+# 4択アンケートの取得（GET）と作成（POST）を行うAPI
 @app.route("/api/surveys", methods=["GET", "POST"])
 def handle_surveys():
     if request.method == "POST":
-        data = request.get_json(silent=True) or {}
-        name = data.get("name")
-        question = data.get("question")
-        option1 = data.get("option1")
-        option2 = data.get("option2")
-        option3 = data.get("option3", "")
-        option4 = data.get("option4", "")
+        # request.get_json() ではなく request.form でテキストデータを受け取る
+        name = request.form.get("name")
+        question = request.form.get("question")
+        option1 = request.form.get("option1")
+        option2 = request.form.get("option2")
+        option3 = request.form.get("option3", "")
+        option4 = request.form.get("option4", "")
         
         if not question or not option1 or not option2:
             return jsonify({"error": "question and options 1,2 are required"}), 400
 
+        # 画像保存用の補助関数
+        def save_image(file_obj):
+            if file_obj and file_obj.filename:
+                # ファイル名の重複を避けるためUUIDを付与
+                ext = file_obj.filename.split('.')[-1]
+                filename = f"{uuid.uuid4().hex}.{ext}"
+                filepath = UPLOAD_FOLDER / filename
+                file_obj.save(filepath)
+                return f"/{filepath}" # フロントエンドからアクセスするURLパスを返す
+            return None
+
+        # 画像ファイルの保存とパスの取得
+        img_question = save_image(request.files.get("img_question"))
+        img1 = save_image(request.files.get("img1"))
+        img2 = save_image(request.files.get("img2"))
+        img3 = save_image(request.files.get("img3"))
+        img4 = save_image(request.files.get("img4"))
+
         with connect() as con:
             con.execute(
-                """INSERT INTO surveys (name, question, option1, option2, option3, option4, votes1, votes2, votes3, votes4) 
-                   VALUES (?, ?, ?, ?, ?, ?, 0, 0, 0, 0)""",
-                (name, question, option1, option2, option3, option4)
+                """INSERT INTO surveys 
+                   (name, question, option1, option2, option3, option4, 
+                    votes1, votes2, votes3, votes4, img_question, img1, img2, img3, img4) 
+                   VALUES (?, ?, ?, ?, ?, ?, 0, 0, 0, 0, ?, ?, ?, ?, ?)""",
+                (name, question, option1, option2, option3, option4, 
+                 img_question, img1, img2, img3, img4)
             )
         return jsonify({"ok": True}), 201
     
@@ -133,11 +133,10 @@ def handle_surveys():
             rows = con.execute("SELECT * FROM surveys ORDER BY id DESC").fetchall()
         return jsonify([dict(r) for r in rows])
 
-# ③ 投票機能（/api/surveys/<id>/vote）
 @app.route("/api/surveys/<int:survey_id>/vote", methods=["POST"])
 def vote_survey(survey_id):
     data = request.get_json(silent=True) or {}
-    option = data.get("option") # 1, 2, 3, 4 のいずれか
+    option = data.get("option")
     
     with connect() as con:
         if option == 1:
