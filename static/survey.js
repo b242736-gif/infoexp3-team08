@@ -23,14 +23,28 @@ function escapeHtml(s) {
 }
 
 // 投票処理
+// 投票処理
 async function vote(surveyId, optionNumber) {
+    const voteKey = `survey_${surveyId}_option_${optionNumber}`;
+
+    // すでに投票しているか確認
+    if (localStorage.getItem(voteKey)) {
+        alert('この選択肢にはすでに投票しています');
+        return;
+    }
+
     const res = await fetch(`/api/surveys/${surveyId}/vote`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ option: optionNumber })
     });
+
     if (res.ok) {
-        loadSurveys();
+        // 投票成功時に履歴を保存
+        localStorage.setItem(voteKey, 'true');
+        await loadSurveys();
+    } else {
+        alert('投票に失敗しました');
     }
 }
 
